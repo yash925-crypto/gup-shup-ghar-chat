@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import HomePage from '@/components/HomePage';
 import ChatRoom from '@/components/ChatRoom';
@@ -52,20 +51,43 @@ const Index = () => {
     });
 
     console.log(`🎊 Room created: ${roomName} (ID: ${roomId}) by ${adminName}`);
+    console.log('📋 Current rooms:', [...rooms, room]);
   };
 
   const validateRoom = (roomId: string, password: string) => {
-    const room = rooms.find(r => r.id === roomId && r.password === password);
+    console.log('🔍 Validating room ID:', roomId, 'Password:', password);
+    console.log('📋 Available rooms:', rooms);
+    
+    const room = rooms.find(r => {
+      console.log('🔄 Checking room:', r.id, 'vs', roomId, '| Password:', r.password, 'vs', password);
+      return r.id === roomId && r.password === password;
+    });
+    
+    console.log('🎯 Validation result:', room);
     return room || null;
   };
 
   const handleJoinRoom = (roomId: string, password: string, userUsername: string) => {
+    console.log('🚪 Join attempt - Room:', roomId, 'Password:', password, 'Username:', userUsername);
+    
     const room = validateRoom(roomId, password);
     
     if (!room) {
+      console.log('❌ Room not found during join');
       toast({
         title: "Invalid Room! ❌",
         description: "Room ID or password is incorrect",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Check if username already exists in room
+    const usernameExists = room.users.some(user => user.username.toLowerCase() === userUsername.toLowerCase());
+    if (usernameExists) {
+      toast({
+        title: "Username Taken! ❌",
+        description: "This username is already in use in this room",
         variant: "destructive"
       });
       return false;

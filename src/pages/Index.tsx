@@ -10,24 +10,40 @@ interface Room {
   name: string;
   password: string;
   admin: string;
+  users: User[];
+}
+
+interface User {
+  id: string;
+  username: string;
+  isAdmin: boolean;
 }
 
 const Index = () => {
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [username, setUsername] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [rooms, setRooms] = useState<Room[]>([]);
 
-  const handleCreateRoom = (roomName: string, password: string) => {
+  const handleCreateRoom = (roomName: string, password: string, adminName: string) => {
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const adminUser: User = {
+      id: 'admin-' + Date.now(),
+      username: adminName,
+      isAdmin: true
+    };
+    
     const room: Room = {
       id: roomId,
       name: roomName,
       password,
-      admin: 'current-user' // In real app, this would be the user ID
+      admin: adminUser.id,
+      users: [adminUser]
     };
 
+    setRooms(prev => [...prev, room]);
     setCurrentRoom(room);
-    setUsername('Admin');
+    setUsername(adminName);
     setIsAdmin(true);
 
     toast({
@@ -35,20 +51,39 @@ const Index = () => {
       description: `Room ID: ${roomId} - Share with friends!`,
     });
 
-    console.log(`🎊 Room created: ${roomName} (ID: ${roomId})`);
+    console.log(`🎊 Room created: ${roomName} (ID: ${roomId}) by ${adminName}`);
+  };
+
+  const validateRoom = (roomId: string, password: string) => {
+    const room = rooms.find(r => r.id === roomId && r.password === password);
+    return room || null;
   };
 
   const handleJoinRoom = (roomId: string, password: string, userUsername: string) => {
-    // In a real app, this would validate against a server
-    // For demo, we'll simulate a successful join
-    const room: Room = {
-      id: roomId,
-      name: `Room ${roomId}`,
-      password,
-      admin: 'someone-else'
+    const room = validateRoom(roomId, password);
+    
+    if (!room) {
+      toast({
+        title: "Invalid Room! ❌",
+        description: "Room ID or password is incorrect",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    const newUser: User = {
+      id: 'user-' + Date.now(),
+      username: userUsername,
+      isAdmin: false
     };
 
-    setCurrentRoom(room);
+    const updatedRoom = {
+      ...room,
+      users: [...room.users, newUser]
+    };
+
+    setRooms(prev => prev.map(r => r.id === room.id ? updatedRoom : r));
+    setCurrentRoom(updatedRoom);
     setUsername(userUsername);
     setIsAdmin(false);
 
@@ -58,19 +93,38 @@ const Index = () => {
     });
 
     console.log(`🎈 ${userUsername} joined room: ${roomId}`);
+    return true;
   };
 
   const handleLeaveRoom = () => {
+    if (currentRoom) {
+      if (isAdmin) {
+        // Admin leaves = Room deletes immediately
+        setRooms(prev => prev.filter(r => r.id !== currentRoom.id));
+        toast({
+          title: "Room Deleted! 💥",
+          description: "Admin left - Room has been deleted",
+        });
+        console.log('👑 Admin left - Room deleted immediately');
+      } else {
+        // Regular user leaves
+        const updatedRoom = {
+          ...currentRoom,
+          users: currentRoom.users.filter(u => u.username !== username)
+        };
+        setRooms(prev => prev.map(r => r.id === currentRoom.id ? updatedRoom : r));
+        
+        toast({
+          title: "Left Room 👋",
+          description: "You have left the chat",
+        });
+        console.log('👋 User left the room');
+      }
+    }
+
     setCurrentRoom(null);
     setUsername('');
     setIsAdmin(false);
-
-    toast({
-      title: "Left Room 👋",
-      description: "All your messages have been deleted",
-    });
-
-    console.log('👋 Left the room');
   };
 
   return (
@@ -80,12 +134,15 @@ const Index = () => {
           <HomePage 
             onCreateRoom={handleCreateRoom}
             onJoinRoom={handleJoinRoom}
+            onValidateRoom={validateRoom}
           />
         ) : (
           <ChatRoom
             roomName={currentRoom.name}
+            roomId={currentRoom.id}
             username={username}
             isAdmin={isAdmin}
+            users={currentRoom.users}
             onLeaveRoom={handleLeaveRoom}
           />
         )}

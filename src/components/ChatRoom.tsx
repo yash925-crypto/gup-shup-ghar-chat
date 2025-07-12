@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Smile, Crown, Users, Settings, Volume2, VolumeX, Timer } from 'lucide-react';
+import { Send, Smile, Crown, Users, Settings, Volume2, VolumeX, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -11,7 +11,6 @@ interface Message {
   content: string;
   timestamp: number;
   type: 'message' | 'system';
-  timeLeft?: number;
 }
 
 interface User {
@@ -22,20 +21,19 @@ interface User {
 
 interface ChatRoomProps {
   roomName: string;
+  roomId: string;
   username: string;
   isAdmin: boolean;
+  users: User[];
   onLeaveRoom: () => void;
 }
 
-const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) => {
+const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: ChatRoomProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [users, setUsers] = useState<User[]>([
-    { id: '1', username, isAdmin }
-  ]);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [timerEnabled, setTimerEnabled] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showUsersList, setShowUsersList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const emojis = ['😀', '😂', '😍', '🤔', '😎', '🥳', '😭', '🔥', '💯', '👍', '❤️', '💀'];
@@ -45,20 +43,16 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
   }, [messages]);
 
   useEffect(() => {
-    // Simulate auto-delete messages
-    const interval = setInterval(() => {
-      if (timerEnabled) {
-        setMessages(prevMessages => 
-          prevMessages.map(msg => ({
-            ...msg,
-            timeLeft: msg.timeLeft ? Math.max(0, msg.timeLeft - 1) : 30
-          })).filter(msg => msg.timeLeft! > 0)
-        );
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [timerEnabled]);
+    // Add welcome message when component mounts
+    const welcomeMessage: Message = {
+      id: Date.now().toString(),
+      username: 'System',
+      content: `${username} joined the room! 🎉`,
+      timestamp: Date.now(),
+      type: 'system'
+    };
+    setMessages([welcomeMessage]);
+  }, [username]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +62,7 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
         username,
         content: newMessage.trim(),
         timestamp: Date.now(),
-        type: 'message',
-        timeLeft: timerEnabled ? 30 : undefined
+        type: 'message'
       };
 
       setMessages(prev => [...prev, message]);
@@ -85,6 +78,19 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
   const addEmoji = (emoji: string) => {
     setNewMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
+  };
+
+  const handleLeaveRoom = () => {
+    if (isAdmin) {
+      const confirmLeave = window.confirm(
+        "⚠️ Admin Alert!\nIf you leave, the entire room will be deleted immediately!\nAre you sure?"
+      );
+      if (confirmLeave) {
+        onLeaveRoom();
+      }
+    } else {
+      onLeaveRoom();
+    }
   };
 
   const getMessageBubbleStyle = (msg: Message) => {
@@ -110,11 +116,36 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               {isAdmin && <Crown className="h-5 w-5 text-yellow-400" />}
-              <h1 className="text-xl font-bold text-white">{roomName}</h1>
+              <div>
+                <h1 className="text-xl font-bold text-white">{roomName}</h1>
+                <p className="text-white/60 text-xs">ID: {roomId}</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-1 text-white/70 text-sm">
-              <Users className="h-4 w-4" />
-              <span>{users.length}</span>
+            <div className="relative">
+              <Button
+                onClick={() => setShowUsersList(!showUsersList)}
+                className="bg-white/20 hover:bg-white/30 text-white p-2 flex items-center space-x-1"
+              >
+                <Users className="h-4 w-4" />
+                <span>{users.length}</span>
+              </Button>
+              
+              {showUsersList && (
+                <Card className="absolute top-12 left-0 p-3 bg-white shadow-lg z-10 min-w-48">
+                  <h3 className="font-semibold mb-2">Online Users</h3>
+                  <div className="space-y-1">
+                    {users.map((user) => (
+                      <div key={user.id} className="flex items-center space-x-2 text-sm">
+                        {user.isAdmin && <Crown className="h-3 w-3 text-yellow-500" />}
+                        <span className={user.username === username ? 'font-bold text-blue-600' : ''}>
+                          {user.username}
+                        </span>
+                        {user.isAdmin && <span className="text-xs text-gray-500">(Admin)</span>}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
             </div>
           </div>
           
@@ -126,16 +157,11 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
               {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </Button>
             <Button
-              onClick={() => setTimerEnabled(!timerEnabled)}
-              className={`p-2 ${timerEnabled ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} text-white`}
+              onClick={handleLeaveRoom}
+              className={`px-4 text-white ${isAdmin ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'}`}
             >
-              <Timer className="h-4 w-4" />
-            </Button>
-            <Button
-              onClick={onLeaveRoom}
-              className="bg-red-500 hover:bg-red-600 text-white px-4"
-            >
-              Leave
+              <LogOut className="h-4 w-4 mr-1" />
+              {isAdmin ? 'Delete Room' : 'Leave'}
             </Button>
           </div>
         </div>
@@ -143,10 +169,13 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messages.length === 0 && (
+        {messages.length <= 1 && (
           <div className="text-center text-white/70 mt-8">
             <p className="text-lg">🎉 Welcome to {roomName}!</p>
-            <p className="text-sm mt-2">Start the conversation... messages will auto-delete in 30 seconds!</p>
+            <p className="text-sm mt-2">Start the conversation... {isAdmin ? 'You are the admin!' : 'Have fun chatting!'}</p>
+            {isAdmin && (
+              <p className="text-xs mt-1 text-red-200">⚠️ If you leave, the room will be deleted immediately!</p>
+            )}
           </div>
         )}
 
@@ -155,12 +184,13 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
             <div className={getMessageBubbleStyle(message)}>
               {message.type === 'message' && (
                 <div className="flex items-center justify-between text-xs opacity-70 mb-1">
-                  <span>{message.username}</span>
-                  {message.timeLeft && timerEnabled && (
-                    <span className="bg-black/20 px-2 py-1 rounded">
-                      {message.timeLeft}s
-                    </span>
-                  )}
+                  <span className="flex items-center">
+                    {users.find(u => u.username === message.username)?.isAdmin && (
+                      <Crown className="h-3 w-3 text-yellow-300 mr-1" />
+                    )}
+                    {message.username}
+                  </span>
+                  <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
                 </div>
               )}
               <p className="break-words">{message.content}</p>
@@ -219,8 +249,8 @@ const ChatRoom = ({ roomName, username, isAdmin, onLeaveRoom }: ChatRoomProps) =
         </form>
         
         <div className="text-center text-white/50 text-xs mt-2">
-          {timerEnabled ? "🔥 Auto-delete ON" : "⏸️ Auto-delete OFF"} • 
-          {soundEnabled ? " 🔊 Sound ON" : " 🔇 Sound OFF"}
+          {soundEnabled ? "🔊 Sound ON" : "🔇 Sound OFF"} • 
+          {isAdmin ? " 👑 You are Admin" : ` 👤 ${users.length} users online`}
         </div>
       </div>
     </div>

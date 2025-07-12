@@ -1,26 +1,38 @@
 
 import React, { useState } from 'react';
-import { Heart, Users, Crown, Coffee } from 'lucide-react';
+import { Heart, Users, Crown, Coffee, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface HomePageProps {
-  onCreateRoom: (roomName: string, password: string) => void;
-  onJoinRoom: (roomId: string, password: string, username: string) => void;
+interface Room {
+  id: string;
+  name: string;
+  password: string;
+  admin: string;
+  users: any[];
 }
 
-const HomePage = ({ onCreateRoom, onJoinRoom }: HomePageProps) => {
+interface HomePageProps {
+  onCreateRoom: (roomName: string, password: string, adminName: string) => void;
+  onJoinRoom: (roomId: string, password: string, username: string) => boolean;
+  onValidateRoom: (roomId: string, password: string) => Room | null;
+}
+
+const HomePage = ({ onCreateRoom, onJoinRoom, onValidateRoom }: HomePageProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [isValidated, setIsValidated] = useState(false);
   const [roomName, setRoomName] = useState('');
   const [password, setPassword] = useState('');
   const [roomId, setRoomId] = useState('');
   const [username, setUsername] = useState('');
+  const [adminName, setAdminName] = useState('');
+  const [validatedRoom, setValidatedRoom] = useState<Room | null>(null);
 
   const funnyRoomNames = [
     "GupShup Ghar 🏠",
-    "Bakchodi Central 🎭",
+    "Bakchodi Central 🎭", 
     "Masti Ka Adda ✨",
     "Dil Ki Baat ❤️",
     "Secret Society 🤫",
@@ -29,21 +41,45 @@ const HomePage = ({ onCreateRoom, onJoinRoom }: HomePageProps) => {
 
   const handleCreateRoom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomName.trim() && password.trim()) {
-      onCreateRoom(roomName, password);
+    if (roomName.trim() && password.trim() && adminName.trim()) {
+      onCreateRoom(roomName, password, adminName);
+    }
+  };
+
+  const handleValidateRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (roomId.trim() && password.trim()) {
+      const room = onValidateRoom(roomId, password);
+      if (room) {
+        setValidatedRoom(room);
+        setIsValidated(true);
+      }
     }
   };
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomId.trim() && password.trim() && username.trim()) {
-      onJoinRoom(roomId, password, username);
+    if (username.trim() && validatedRoom) {
+      const success = onJoinRoom(validatedRoom.id, validatedRoom.password, username);
+      if (!success) {
+        setIsValidated(false);
+        setValidatedRoom(null);
+      }
     }
   };
 
   const suggestRoomName = () => {
     const randomName = funnyRoomNames[Math.floor(Math.random() * funnyRoomNames.length)];
     setRoomName(randomName);
+  };
+
+  const resetJoinFlow = () => {
+    setIsJoining(false);
+    setIsValidated(false);
+    setRoomId('');
+    setPassword('');
+    setUsername('');
+    setValidatedRoom(null);
   };
 
   return (
@@ -58,7 +94,7 @@ const HomePage = ({ onCreateRoom, onJoinRoom }: HomePageProps) => {
           <p className="text-lg opacity-90">"Yahan pyaar ho ya bakchodi, sab temporary hai!"</p>
           <div className="flex items-center justify-center mt-2 text-sm opacity-75">
             <Coffee className="h-4 w-4 mr-1" />
-            <span>Messages auto-delete in 30 seconds</span>
+            <span>Admin leaves = Room deletes instantly!</span>
           </div>
         </div>
 
@@ -124,6 +160,16 @@ const HomePage = ({ onCreateRoom, onJoinRoom }: HomePageProps) => {
                     className="bg-white/20 border-white/30 text-white placeholder-white/50"
                   />
                 </div>
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">Your Name (Admin)</label>
+                  <Input
+                    type="text"
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    placeholder="Enter your name..."
+                    className="bg-white/20 border-white/30 text-white placeholder-white/50"
+                  />
+                </div>
                 <div className="flex space-x-2">
                   <Button
                     type="button"
@@ -144,13 +190,13 @@ const HomePage = ({ onCreateRoom, onJoinRoom }: HomePageProps) => {
           </Card>
         )}
 
-        {isJoining && (
+        {isJoining && !isValidated && (
           <Card className="bg-white/10 backdrop-blur-md border-white/20 animate-scale-in">
             <CardHeader>
-              <CardTitle className="text-white text-center">Join Room</CardTitle>
+              <CardTitle className="text-white text-center">Validate Room Access</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleJoinRoom} className="space-y-4">
+              <form onSubmit={handleValidateRoom} className="space-y-4">
                 <div>
                   <label className="block text-white text-sm font-medium mb-2">Room ID</label>
                   <Input
@@ -171,6 +217,39 @@ const HomePage = ({ onCreateRoom, onJoinRoom }: HomePageProps) => {
                     className="bg-white/20 border-white/30 text-white placeholder-white/50"
                   />
                 </div>
+                <div className="flex space-x-2">
+                  <Button
+                    type="button"
+                    onClick={resetJoinFlow}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-blue-500 hover:bg-blue-600"
+                  >
+                    Validate 🔍
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {isJoining && isValidated && validatedRoom && (
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 animate-scale-in">
+            <CardHeader>
+              <CardTitle className="text-white text-center flex items-center justify-center">
+                <CheckCircle className="mr-2 h-5 w-5 text-green-400" />
+                Access Granted!
+              </CardTitle>
+              <p className="text-white/70 text-center text-sm">
+                Room: {validatedRoom.name} | Users: {validatedRoom.users.length}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleJoinRoom} className="space-y-4">
                 <div>
                   <label className="block text-white text-sm font-medium mb-2">Your Name</label>
                   <Input
@@ -184,12 +263,14 @@ const HomePage = ({ onCreateRoom, onJoinRoom }: HomePageProps) => {
                 <div className="flex space-x-2">
                   <Button
                     type="button"
-                    onClick={() => setIsJoining(false)}
+                    onClick={() => setIsValidated(false)}
                     className="flex-1 bg-gray-500 hover:bg-gray-600"
-                  />
+                  >
+                    Back
+                  </Button>
                   <Button
                     type="submit"
-                    className="flex-1 bg-blue-500 hover:bg-blue-600"
+                    className="flex-1 bg-green-500 hover:bg-green-600"
                   >
                     Join Chat 💬
                   </Button>

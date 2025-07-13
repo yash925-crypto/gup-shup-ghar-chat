@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import HomePage from '@/components/HomePage';
 import ChatRoom from '@/components/ChatRoom';
 import PrivacyWrapper from '@/components/PrivacyWrapper';
@@ -25,7 +25,7 @@ const Index = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
 
-  const handleCreateRoom = (roomName: string, password: string, adminName: string) => {
+  const handleCreateRoom = useCallback((roomName: string, password: string, adminName: string) => {
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
     const adminUser: User = {
       id: 'admin-' + Date.now(),
@@ -50,37 +50,25 @@ const Index = () => {
       title: "Room Created! 🎉",
       description: `Room ID: ${roomId}`,
     });
+  }, []);
 
-    console.log(`🎊 Room created: ${roomName} (ID: ${roomId}) by ${adminName}`);
-    console.log('📋 Current rooms:', [...rooms, room]);
-  };
-
-  const validateRoom = (roomId: string, password: string) => {
-    console.log('🔍 Validating room - ID:', roomId, 'Password:', password);
-    console.log('📋 Available rooms:', rooms);
-    
-    // Convert both to uppercase for comparison and trim spaces
+  const validateRoom = useCallback((roomId: string, password: string) => {
     const searchId = roomId.trim().toUpperCase();
     const searchPassword = password.trim();
     
     const room = rooms.find(r => {
       const roomIdMatch = r.id.toUpperCase() === searchId;
       const passwordMatch = r.password === searchPassword;
-      console.log('🔄 Checking room:', r.id, 'vs', searchId, '| Password match:', passwordMatch);
       return roomIdMatch && passwordMatch;
     });
     
-    console.log('🎯 Validation result:', room ? 'Found' : 'Not found');
     return room || null;
-  };
+  }, [rooms]);
 
-  const handleJoinRoom = (roomId: string, password: string, userUsername: string) => {
-    console.log('🚪 Join attempt - Room:', roomId, 'Password:', password, 'Username:', userUsername);
-    
+  const handleJoinRoom = useCallback((roomId: string, password: string, userUsername: string) => {
     const room = validateRoom(roomId, password);
     
     if (!room) {
-      console.log('❌ Room not found during join');
       toast({
         title: "Invalid Room! ❌",
         description: "Room ID or password is incorrect",
@@ -89,7 +77,6 @@ const Index = () => {
       return false;
     }
 
-    // Check if username already exists in room
     const usernameExists = room.users.some(user => 
       user.username.toLowerCase().trim() === userUsername.toLowerCase().trim()
     );
@@ -123,22 +110,18 @@ const Index = () => {
       description: `Welcome to ${room.name}`,
     });
 
-    console.log(`🎈 ${userUsername} joined room: ${roomId}`);
     return true;
-  };
+  }, [validateRoom]);
 
-  const handleLeaveRoom = () => {
+  const handleLeaveRoom = useCallback(() => {
     if (currentRoom) {
       if (isAdmin) {
-        // Admin leaves = Room deletes immediately
         setRooms(prev => prev.filter(r => r.id !== currentRoom.id));
         toast({
           title: "Room Deleted! 💥",
           description: "Admin left - Room has been deleted",
         });
-        console.log('👑 Admin left - Room deleted immediately');
       } else {
-        // Regular user leaves
         const updatedRoom = {
           ...currentRoom,
           users: currentRoom.users.filter(u => u.username !== username)
@@ -149,14 +132,13 @@ const Index = () => {
           title: "Left Room 👋",
           description: "You have left the chat",
         });
-        console.log('👋 User left the room');
       }
     }
 
     setCurrentRoom(null);
     setUsername('');
     setIsAdmin(false);
-  };
+  }, [currentRoom, isAdmin, username]);
 
   return (
     <PrivacyWrapper>

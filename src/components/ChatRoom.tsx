@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Smile, Crown, Users, Volume2, VolumeX, LogOut, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { toast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -40,26 +39,31 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [theme, setTheme] = useState<Theme>('colorful');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const welcomeMessageAdded = useRef(false);
 
   const emojis = ['😀', '😂', '😍', '🤔', '😎', '🥳', '😭', '🔥', '💯', '👍', '❤️', '💀'];
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Add welcome message only once
   useEffect(() => {
-    // Add welcome message when component mounts
-    const welcomeMessage: Message = {
-      id: Date.now().toString(),
-      username: 'System',
-      content: `${username} joined the room! 🎉`,
-      timestamp: Date.now(),
-      type: 'system'
-    };
-    setMessages([welcomeMessage]);
+    if (!welcomeMessageAdded.current) {
+      const welcomeMessage: Message = {
+        id: Date.now().toString(),
+        username: 'System',
+        content: `${username} joined the room! 🎉`,
+        timestamp: Date.now(),
+        type: 'system'
+      };
+      setMessages([welcomeMessage]);
+      welcomeMessageAdded.current = true;
+    }
   }, [username]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim()) {
       const message: Message = {
@@ -73,19 +77,18 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
       setMessages(prev => [...prev, message]);
       setNewMessage('');
 
-      // Simulate sound effect
       if (soundEnabled) {
-        console.log('🔊 Dhinchak sound played!');
+        console.log('🔊 Message sent!');
       }
     }
-  };
+  }, [newMessage, username, soundEnabled]);
 
-  const addEmoji = (emoji: string) => {
+  const addEmoji = useCallback((emoji: string) => {
     setNewMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
-  };
+  }, []);
 
-  const handleLeaveRoom = () => {
+  const handleLeaveRoom = useCallback(() => {
     if (isAdmin) {
       const confirmLeave = window.confirm(
         "⚠️ Admin Alert!\nIf you leave, the entire room will be deleted immediately!\nAre you sure?"
@@ -96,9 +99,9 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
     } else {
       onLeaveRoom();
     }
-  };
+  }, [isAdmin, onLeaveRoom]);
 
-  const getThemeClasses = () => {
+  const getThemeClasses = useCallback(() => {
     switch (theme) {
       case 'dark':
         return {
@@ -120,7 +123,7 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
           inputField: 'flex-1 bg-white border-gray-300 text-gray-800 placeholder-gray-500',
           welcomeText: 'text-center text-gray-600 mt-8'
         };
-      default: // colorful
+      default:
         return {
           container: 'min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex flex-col',
           header: 'bg-white/10 backdrop-blur-md border-b border-white/20 p-4',
@@ -131,9 +134,9 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
           welcomeText: 'text-center text-white/70 mt-8'
         };
     }
-  };
+  }, [theme]);
 
-  const getMessageBubbleStyle = (msg: Message) => {
+  const getMessageBubbleStyle = useCallback((msg: Message) => {
     const isOwn = msg.username === username;
     const baseStyle = "max-w-xs lg:max-w-md px-4 py-2 rounded-2xl mb-2 animate-scale-in";
     
@@ -158,7 +161,7 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
         return `${baseStyle} bg-white text-gray-800 mr-auto shadow-md`;
       }
     }
-  };
+  }, [username, theme]);
 
   const themeClasses = getThemeClasses();
 

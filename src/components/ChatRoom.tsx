@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Smile, Crown, Users, Settings, Volume2, VolumeX, LogOut } from 'lucide-react';
+import { Send, Smile, Crown, Users, Settings, Volume2, VolumeX, LogOut, Copy, Share2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { toast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -25,15 +26,18 @@ interface ChatRoomProps {
   username: string;
   isAdmin: boolean;
   users: User[];
+  shareableLink: string;
   onLeaveRoom: () => void;
 }
 
-const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: ChatRoomProps) => {
+const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, onLeaveRoom }: ChatRoomProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showUsersList, setShowUsersList] = useState(false);
+  const [showShareLink, setShowShareLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const emojis = ['😀', '😂', '😍', '🤔', '😎', '🥳', '😭', '🔥', '💯', '👍', '❤️', '💀'];
@@ -90,6 +94,25 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
       }
     } else {
       onLeaveRoom();
+    }
+  };
+
+  const copyShareableLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareableLink);
+      setLinkCopied(true);
+      toast({
+        title: "Link Copied! 📋",
+        description: "Shareable link copied to clipboard",
+      });
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      toast({
+        title: "Copy Failed ❌",
+        description: "Could not copy link to clipboard",
+        variant: "destructive"
+      });
     }
   };
 
@@ -150,6 +173,36 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
           </div>
           
           <div className="flex items-center space-x-2">
+            {isAdmin && (
+              <div className="relative">
+                <Button
+                  onClick={() => setShowShareLink(!showShareLink)}
+                  className="bg-green-600 hover:bg-green-700 text-white p-2"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+                
+                {showShareLink && (
+                  <Card className="absolute top-12 right-0 p-3 bg-white shadow-lg z-10 min-w-80">
+                    <h3 className="font-semibold mb-2">Share Room Link</h3>
+                    <div className="flex items-center space-x-2">
+                      <Input 
+                        value={shareableLink} 
+                        readOnly 
+                        className="text-xs"
+                      />
+                      <Button
+                        onClick={copyShareableLink}
+                        className="bg-blue-600 hover:bg-blue-700 text-white p-2"
+                      >
+                        {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Share this link with others to join the room</p>
+                  </Card>
+                )}
+              </div>
+            )}
             <Button
               onClick={() => setSoundEnabled(!soundEnabled)}
               className="bg-white/20 hover:bg-white/30 text-white p-2"
@@ -174,7 +227,10 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: C
             <p className="text-lg">🎉 Welcome to {roomName}!</p>
             <p className="text-sm mt-2">Start the conversation... {isAdmin ? 'You are the admin!' : 'Have fun chatting!'}</p>
             {isAdmin && (
-              <p className="text-xs mt-1 text-red-200">⚠️ If you leave, the room will be deleted immediately!</p>
+              <>
+                <p className="text-xs mt-1 text-red-200">⚠️ If you leave, the room will be deleted immediately!</p>
+                <p className="text-xs mt-1 text-green-200">💡 Use the share button to invite others!</p>
+              </>
             )}
           </div>
         )}

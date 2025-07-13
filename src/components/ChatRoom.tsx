@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Smile, Crown, Users, Settings, Volume2, VolumeX, LogOut, Copy, Share2, Check } from 'lucide-react';
+import { Send, Smile, Crown, Users, Volume2, VolumeX, LogOut, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -26,18 +26,19 @@ interface ChatRoomProps {
   username: string;
   isAdmin: boolean;
   users: User[];
-  shareableLink: string;
   onLeaveRoom: () => void;
 }
 
-const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, onLeaveRoom }: ChatRoomProps) => {
+type Theme = 'dark' | 'white' | 'colorful';
+
+const ChatRoom = ({ roomName, roomId, username, isAdmin, users, onLeaveRoom }: ChatRoomProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showUsersList, setShowUsersList] = useState(false);
-  const [showShareLink, setShowShareLink] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const [theme, setTheme] = useState<Theme>('colorful');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const emojis = ['😀', '😂', '😍', '🤔', '😎', '🥳', '😭', '🔥', '💯', '👍', '❤️', '💀'];
@@ -97,22 +98,38 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, o
     }
   };
 
-  const copyShareableLink = async () => {
-    try {
-      await navigator.clipboard.writeText(shareableLink);
-      setLinkCopied(true);
-      toast({
-        title: "Link Copied! 📋",
-        description: "Shareable link copied to clipboard",
-      });
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy link:', err);
-      toast({
-        title: "Copy Failed ❌",
-        description: "Could not copy link to clipboard",
-        variant: "destructive"
-      });
+  const getThemeClasses = () => {
+    switch (theme) {
+      case 'dark':
+        return {
+          container: 'min-h-screen bg-gray-900 flex flex-col',
+          header: 'bg-gray-800 border-b border-gray-700 p-4',
+          headerText: 'text-white',
+          messages: 'flex-1 overflow-y-auto p-4 space-y-2 bg-gray-900',
+          input: 'bg-gray-800 border-t border-gray-700 p-4',
+          inputField: 'flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400',
+          welcomeText: 'text-center text-gray-300 mt-8'
+        };
+      case 'white':
+        return {
+          container: 'min-h-screen bg-white flex flex-col',
+          header: 'bg-gray-100 border-b border-gray-200 p-4',
+          headerText: 'text-gray-800',
+          messages: 'flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50',
+          input: 'bg-white border-t border-gray-200 p-4',
+          inputField: 'flex-1 bg-white border-gray-300 text-gray-800 placeholder-gray-500',
+          welcomeText: 'text-center text-gray-600 mt-8'
+        };
+      default: // colorful
+        return {
+          container: 'min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex flex-col',
+          header: 'bg-white/10 backdrop-blur-md border-b border-white/20 p-4',
+          headerText: 'text-white',
+          messages: 'flex-1 overflow-y-auto p-4 space-y-2',
+          input: 'bg-white/10 backdrop-blur-md border-t border-white/20 p-4',
+          inputField: 'flex-1 bg-white/20 border-white/30 text-white placeholder-white/50',
+          welcomeText: 'text-center text-white/70 mt-8'
+        };
     }
   };
 
@@ -121,33 +138,47 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, o
     const baseStyle = "max-w-xs lg:max-w-md px-4 py-2 rounded-2xl mb-2 animate-scale-in";
     
     if (msg.type === 'system') {
-      return `${baseStyle} bg-gray-200 text-gray-600 mx-auto text-center text-sm`;
+      if (theme === 'dark') {
+        return `${baseStyle} bg-gray-700 text-gray-300 mx-auto text-center text-sm`;
+      } else if (theme === 'white') {
+        return `${baseStyle} bg-gray-200 text-gray-600 mx-auto text-center text-sm`;
+      } else {
+        return `${baseStyle} bg-gray-200 text-gray-600 mx-auto text-center text-sm`;
+      }
     }
 
     if (isOwn) {
       return `${baseStyle} bg-gradient-to-r from-pink-500 to-red-500 text-white ml-auto`;
     } else {
-      return `${baseStyle} bg-white text-gray-800 mr-auto shadow-md`;
+      if (theme === 'dark') {
+        return `${baseStyle} bg-gray-700 text-white mr-auto shadow-md`;
+      } else if (theme === 'white') {
+        return `${baseStyle} bg-white text-gray-800 mr-auto shadow-md border border-gray-200`;
+      } else {
+        return `${baseStyle} bg-white text-gray-800 mr-auto shadow-md`;
+      }
     }
   };
 
+  const themeClasses = getThemeClasses();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 flex flex-col">
+    <div className={themeClasses.container}>
       {/* Header */}
-      <div className="bg-white/10 backdrop-blur-md border-b border-white/20 p-4">
+      <div className={themeClasses.header}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               {isAdmin && <Crown className="h-5 w-5 text-yellow-400" />}
               <div>
-                <h1 className="text-xl font-bold text-white">{roomName}</h1>
-                <p className="text-white/60 text-xs">ID: {roomId}</p>
+                <h1 className={`text-xl font-bold ${themeClasses.headerText}`}>{roomName}</h1>
+                <p className={`${themeClasses.headerText} opacity-60 text-xs`}>ID: {roomId}</p>
               </div>
             </div>
             <div className="relative">
               <Button
                 onClick={() => setShowUsersList(!showUsersList)}
-                className="bg-white/20 hover:bg-white/30 text-white p-2 flex items-center space-x-1"
+                className={theme === 'colorful' ? "bg-white/20 hover:bg-white/30 text-white p-2 flex items-center space-x-1" : "bg-gray-600 hover:bg-gray-700 text-white p-2 flex items-center space-x-1"}
               >
                 <Users className="h-4 w-4" />
                 <span>{users.length}</span>
@@ -173,39 +204,43 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, o
           </div>
           
           <div className="flex items-center space-x-2">
-            {isAdmin && (
-              <div className="relative">
-                <Button
-                  onClick={() => setShowShareLink(!showShareLink)}
-                  className="bg-green-600 hover:bg-green-700 text-white p-2"
-                >
-                  <Share2 className="h-4 w-4" />
-                </Button>
-                
-                {showShareLink && (
-                  <Card className="absolute top-12 right-0 p-3 bg-white shadow-lg z-10 min-w-80">
-                    <h3 className="font-semibold mb-2">Share Room Link</h3>
-                    <div className="flex items-center space-x-2">
-                      <Input 
-                        value={shareableLink} 
-                        readOnly 
-                        className="text-xs"
-                      />
-                      <Button
-                        onClick={copyShareableLink}
-                        className="bg-blue-600 hover:bg-blue-700 text-white p-2"
-                      >
-                        {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Share this link with others to join the room</p>
-                  </Card>
-                )}
-              </div>
-            )}
+            <div className="relative">
+              <Button
+                onClick={() => setShowThemeSelector(!showThemeSelector)}
+                className={theme === 'colorful' ? "bg-white/20 hover:bg-white/30 text-white p-2" : "bg-gray-600 hover:bg-gray-700 text-white p-2"}
+              >
+                <Palette className="h-4 w-4" />
+              </Button>
+              
+              {showThemeSelector && (
+                <Card className="absolute top-12 right-0 p-3 bg-white shadow-lg z-10 min-w-32">
+                  <h3 className="font-semibold mb-2 text-sm">Theme</h3>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => {setTheme('colorful'); setShowThemeSelector(false);}}
+                      className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-gray-100 ${theme === 'colorful' ? 'bg-blue-100 text-blue-600' : ''}`}
+                    >
+                      🌈 Colorful
+                    </button>
+                    <button
+                      onClick={() => {setTheme('dark'); setShowThemeSelector(false);}}
+                      className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-gray-100 ${theme === 'dark' ? 'bg-blue-100 text-blue-600' : ''}`}
+                    >
+                      🌙 Dark
+                    </button>
+                    <button
+                      onClick={() => {setTheme('white'); setShowThemeSelector(false);}}
+                      className={`w-full text-left px-2 py-1 rounded text-xs hover:bg-gray-100 ${theme === 'white' ? 'bg-blue-100 text-blue-600' : ''}`}
+                    >
+                      ☀️ White
+                    </button>
+                  </div>
+                </Card>
+              )}
+            </div>
             <Button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="bg-white/20 hover:bg-white/30 text-white p-2"
+              className={theme === 'colorful' ? "bg-white/20 hover:bg-white/30 text-white p-2" : "bg-gray-600 hover:bg-gray-700 text-white p-2"}
             >
               {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </Button>
@@ -221,16 +256,13 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, o
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className={themeClasses.messages}>
         {messages.length <= 1 && (
-          <div className="text-center text-white/70 mt-8">
+          <div className={themeClasses.welcomeText}>
             <p className="text-lg">🎉 Welcome to {roomName}!</p>
             <p className="text-sm mt-2">Start the conversation... {isAdmin ? 'You are the admin!' : 'Have fun chatting!'}</p>
             {isAdmin && (
-              <>
-                <p className="text-xs mt-1 text-red-200">⚠️ If you leave, the room will be deleted immediately!</p>
-                <p className="text-xs mt-1 text-green-200">💡 Use the share button to invite others!</p>
-              </>
+              <p className="text-xs mt-1 text-red-300">⚠️ If you leave, the room will be deleted immediately!</p>
             )}
           </div>
         )}
@@ -257,13 +289,13 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, o
       </div>
 
       {/* Input */}
-      <div className="bg-white/10 backdrop-blur-md border-t border-white/20 p-4">
+      <div className={themeClasses.input}>
         <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
           <div className="relative">
             <Button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="bg-white/20 hover:bg-white/30 text-white p-2"
+              className={theme === 'colorful' ? "bg-white/20 hover:bg-white/30 text-white p-2" : "bg-gray-600 hover:bg-gray-700 text-white p-2"}
             >
               <Smile className="h-4 w-4" />
             </Button>
@@ -291,7 +323,7 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, o
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 bg-white/20 border-white/30 text-white placeholder-white/50"
+            className={themeClasses.inputField}
             maxLength={500}
           />
           
@@ -304,7 +336,7 @@ const ChatRoom = ({ roomName, roomId, username, isAdmin, users, shareableLink, o
           </Button>
         </form>
         
-        <div className="text-center text-white/50 text-xs mt-2">
+        <div className={`text-center ${themeClasses.headerText} opacity-50 text-xs mt-2`}>
           {soundEnabled ? "🔊 Sound ON" : "🔇 Sound OFF"} • 
           {isAdmin ? " 👑 You are Admin" : ` 👤 ${users.length} users online`}
         </div>

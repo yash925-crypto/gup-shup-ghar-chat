@@ -24,21 +24,6 @@ const Index = () => {
   const [username, setUsername] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [shareableLink, setShareableLink] = useState('');
-
-  const generateShareableLink = (roomId: string, password: string) => {
-    const baseUrl = window.location.origin;
-    // Create a professional looking link
-    const encodedData = btoa(`${roomId}:${password}`).replace(/[+/=]/g, (match) => {
-      switch (match) {
-        case '+': return '-';
-        case '/': return '_';
-        case '=': return '';
-        default: return match;
-      }
-    });
-    return `${baseUrl}/join/${encodedData}`;
-  };
 
   const handleCreateRoom = (roomName: string, password: string, adminName: string) => {
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -61,30 +46,31 @@ const Index = () => {
     setUsername(adminName);
     setIsAdmin(true);
 
-    // Generate shareable link
-    const link = generateShareableLink(roomId, password);
-    setShareableLink(link);
-
     toast({
       title: "Room Created! 🎉",
-      description: `Room ID: ${roomId} - Link generated!`,
+      description: `Room ID: ${roomId}`,
     });
 
     console.log(`🎊 Room created: ${roomName} (ID: ${roomId}) by ${adminName}`);
-    console.log('📋 Shareable link:', link);
     console.log('📋 Current rooms:', [...rooms, room]);
   };
 
   const validateRoom = (roomId: string, password: string) => {
-    console.log('🔍 Validating room ID:', roomId, 'Password:', password);
+    console.log('🔍 Validating room - ID:', roomId, 'Password:', password);
     console.log('📋 Available rooms:', rooms);
     
+    // Convert both to uppercase for comparison and trim spaces
+    const searchId = roomId.trim().toUpperCase();
+    const searchPassword = password.trim();
+    
     const room = rooms.find(r => {
-      console.log('🔄 Checking room:', r.id, 'vs', roomId.toUpperCase(), '| Password:', r.password, 'vs', password);
-      return r.id.toUpperCase() === roomId.toUpperCase() && r.password === password;
+      const roomIdMatch = r.id.toUpperCase() === searchId;
+      const passwordMatch = r.password === searchPassword;
+      console.log('🔄 Checking room:', r.id, 'vs', searchId, '| Password match:', passwordMatch);
+      return roomIdMatch && passwordMatch;
     });
     
-    console.log('🎯 Validation result:', room);
+    console.log('🎯 Validation result:', room ? 'Found' : 'Not found');
     return room || null;
   };
 
@@ -104,7 +90,9 @@ const Index = () => {
     }
 
     // Check if username already exists in room
-    const usernameExists = room.users.some(user => user.username.toLowerCase() === userUsername.toLowerCase());
+    const usernameExists = room.users.some(user => 
+      user.username.toLowerCase().trim() === userUsername.toLowerCase().trim()
+    );
     if (usernameExists) {
       toast({
         title: "Username Taken! ❌",
@@ -116,7 +104,7 @@ const Index = () => {
 
     const newUser: User = {
       id: 'user-' + Date.now(),
-      username: userUsername,
+      username: userUsername.trim(),
       isAdmin: false
     };
 
@@ -127,7 +115,7 @@ const Index = () => {
 
     setRooms(prev => prev.map(r => r.id === room.id ? updatedRoom : r));
     setCurrentRoom(updatedRoom);
-    setUsername(userUsername);
+    setUsername(userUsername.trim());
     setIsAdmin(false);
 
     toast({
@@ -168,7 +156,6 @@ const Index = () => {
     setCurrentRoom(null);
     setUsername('');
     setIsAdmin(false);
-    setShareableLink('');
   };
 
   return (
@@ -187,7 +174,6 @@ const Index = () => {
             username={username}
             isAdmin={isAdmin}
             users={currentRoom.users}
-            shareableLink={shareableLink}
             onLeaveRoom={handleLeaveRoom}
           />
         )}

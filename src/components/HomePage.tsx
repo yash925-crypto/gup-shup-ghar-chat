@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Heart, Users, Crown, Coffee, CheckCircle, Sparkles, Zap, Stars } from 'lucide-react';
+import { Heart, Users, Crown, Coffee, CheckCircle, Sparkles, Zap, Stars, Copy, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +43,8 @@ const HomePage = ({ onCreateRoom, onJoinRoom, onValidateRoom }: HomePageProps) =
   const handleCreateRoom = (e: React.FormEvent) => {
     e.preventDefault();
     if (roomName.trim() && password.trim() && adminName.trim()) {
-      onCreateRoom(roomName, password, adminName);
+      console.log('📝 Creating room:', { roomName, password, adminName });
+      onCreateRoom(roomName.trim(), password.trim(), adminName.trim());
     }
   };
 
@@ -56,8 +57,11 @@ const HomePage = ({ onCreateRoom, onJoinRoom, onValidateRoom }: HomePageProps) =
       return;
     }
 
-    console.log('🔍 Validating room:', roomId.trim().toUpperCase(), 'with password:', password.trim());
-    const room = onValidateRoom(roomId.trim().toUpperCase(), password.trim());
+    const cleanRoomId = roomId.trim().toUpperCase();
+    const cleanPassword = password.trim();
+    
+    console.log('🔍 Validating room:', cleanRoomId, 'with password:', cleanPassword);
+    const room = onValidateRoom(cleanRoomId, cleanPassword);
     
     if (room) {
       setValidatedRoom(room);
@@ -66,7 +70,7 @@ const HomePage = ({ onCreateRoom, onJoinRoom, onValidateRoom }: HomePageProps) =
       console.log('✅ Room validated successfully:', room);
     } else {
       setValidationError('Invalid Room ID or Password. Please check and try again.');
-      console.log('❌ Room validation failed for ID:', roomId.trim().toUpperCase(), 'Password:', password.trim());
+      console.log('❌ Room validation failed for ID:', cleanRoomId, 'Password:', cleanPassword);
     }
   };
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import HomePage from '@/components/HomePage';
 import ChatRoom from '@/components/ChatRoom';
@@ -23,6 +24,21 @@ const Index = () => {
   const [username, setUsername] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [shareableLink, setShareableLink] = useState('');
+
+  const generateShareableLink = (roomId: string, password: string) => {
+    const baseUrl = window.location.origin;
+    // Create a professional looking link
+    const encodedData = btoa(`${roomId}:${password}`).replace(/[+/=]/g, (match) => {
+      switch (match) {
+        case '+': return '-';
+        case '/': return '_';
+        case '=': return '';
+        default: return match;
+      }
+    });
+    return `${baseUrl}/join/${encodedData}`;
+  };
 
   const handleCreateRoom = (roomName: string, password: string, adminName: string) => {
     const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -45,12 +61,17 @@ const Index = () => {
     setUsername(adminName);
     setIsAdmin(true);
 
+    // Generate shareable link
+    const link = generateShareableLink(roomId, password);
+    setShareableLink(link);
+
     toast({
       title: "Room Created! 🎉",
-      description: `Room ID: ${roomId} - Share with friends!`,
+      description: `Room ID: ${roomId} - Link generated!`,
     });
 
     console.log(`🎊 Room created: ${roomName} (ID: ${roomId}) by ${adminName}`);
+    console.log('📋 Shareable link:', link);
     console.log('📋 Current rooms:', [...rooms, room]);
   };
 
@@ -59,8 +80,8 @@ const Index = () => {
     console.log('📋 Available rooms:', rooms);
     
     const room = rooms.find(r => {
-      console.log('🔄 Checking room:', r.id, 'vs', roomId, '| Password:', r.password, 'vs', password);
-      return r.id === roomId && r.password === password;
+      console.log('🔄 Checking room:', r.id, 'vs', roomId.toUpperCase(), '| Password:', r.password, 'vs', password);
+      return r.id.toUpperCase() === roomId.toUpperCase() && r.password === password;
     });
     
     console.log('🎯 Validation result:', room);
@@ -147,6 +168,7 @@ const Index = () => {
     setCurrentRoom(null);
     setUsername('');
     setIsAdmin(false);
+    setShareableLink('');
   };
 
   return (
@@ -165,6 +187,7 @@ const Index = () => {
             username={username}
             isAdmin={isAdmin}
             users={currentRoom.users}
+            shareableLink={shareableLink}
             onLeaveRoom={handleLeaveRoom}
           />
         )}
